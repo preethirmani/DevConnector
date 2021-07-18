@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
 
-router.get('/register', (req,res) => 
+//@route  POST  /api/users/register
+//@desc   Register a user
+//@access Public 
+router.post('/register', (req,res) => 
   res.json({
     msg: 'User Route Works!'
   }));
