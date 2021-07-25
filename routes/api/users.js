@@ -5,6 +5,8 @@ const bcrypt = require('bcryptjs');
 const gravatar = require('gravatar');
 const jwt = require('jsonwebtoken');
 const keys = require('../../config/keys');
+const passport = require('passport');
+const { session } = require('passport');
 
 //@route  POST  /api/users/register
 //@desc   Register a user
@@ -52,34 +54,44 @@ router.post('/register', (req, res) => {
 //@access Public 
 
 router.post('/login', (req, res) => {
-  User.findOne({email : req.body.email})
-        .then(user => {
-          if(!user) {
-            res.status(400).json({email: 'User not found!'});
-          } else {
-            bcrypt.compare(req.body.password, user.password)
-                  .then(isMatch => {
-                    if(isMatch) {
-                      // Create Payload
-                      const payLoad = {
-                        id: user.id,
-                        name: user.name,
-                        avatar: user.avatar
-                      };
+  User.findOne({email:req.body.email})
+      .then(user => {
+        if(!user) {
+          return res.status(400).json({email:'User not found...Please register!'})
+        } else {
+          bcrypt.compare(req.body.password,user.password, (err, success) => {
+            if(err) throw err;
+            if(success) {
+              //Create Payload
+              const payload = {
+                id: user.id,
+                name: user.name,
+                avatar: user.avatar
+              };
 
-                      //sign a token
-                      jwt.sign(payLoad, keys.secretoOrKey, 
-                        {expiresIn: 3600}, (err, token) => {
-                            return res.json({token: 'Bearer '+token});
-                        });
+              //Sign a token
+              jwt.sign(payload, keys.secretoOrKey, 
+                {expiresIn: 36000}, (err, token) => {
+                  if (err) throw err;
+                  return res.json({token: 'Bearer '+token});
+                });
+            } else {
+              return res.status(404).json({password:'Incorrect Password!'})
+            }
+          });
+        }
+      })
+      .catch(err => console.log(err));
+})
 
-                    } else {
-                      return res.status(404).json({password: 'Incorrect Password!'});
-                    }
-                  })
-          }
-        })
-        .catch(err => console.log(err))
-});
+//@route  get  /api/users/current
+//@desc   User Current Info
+//@access Private
+
+router.use('/current', 
+passport.authenticate('jwt', {session: false}),
+(req, res) => {
+    res.json(req.user);
+})
 
 module.exports = router;
